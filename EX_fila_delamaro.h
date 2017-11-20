@@ -6,12 +6,16 @@
 
 #define true  1
 #define false 0
+#define caixa_null 2
+
+int constante;
 
 typedef struct s_cliente            //Struct para o cliente
 {
     double tempo_chegada;              //Possui o tempo em que ele chegará na fila
     double tempo_atendimento;          //Possui o tempo em que ele será atendido pelo caixa
     struct s_cliente* proximo;      //E indica quem é o proximo cliente atrás dele
+    double tempo_no_caixa;
 
 }CLIENTE;
 
@@ -34,11 +38,14 @@ int inicializacao(int N_caixa,int N_pessoas,int N_fila);
 
 int simulacao(FILA** vetor_fila,int N_pessoas, int N_caixa,int N_fila);
 
-double calcula_tempo(FILA* vetor_fila, double tempo_atendimento, double tamnaho_fila);
+double calcula_tempo(FILA* afila);
 
 int procura_menor_fila(FILA** vetor_fila,int N_fila);
 
-int caixa(int qual_caixa,CLIENTE* client,double tempo_decorrido,CLIENTE* vetor_caixa[]);
+int destroi_fila(FILA* fi);
+
+int destroi_cliente(CLIENTE* mor);
+
 
 
 #endif
