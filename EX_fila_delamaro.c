@@ -5,6 +5,8 @@
 #define tempo_atende_normal 2
 #define tempo_atende_desvio 1
 
+
+
 //Função para alocar memória para guardar uma fila
 FILA* cria_fila()
 {
@@ -65,14 +67,14 @@ CLIENTE* desenfileirar_cliente(FILA* fila_n)
     {
         if(fila_n == NULL) printf("A fila não existe\n");
         else printf("A fila_n está vazia\n");
-        return NULL;             //Caso a fila esteja vazia não há o que retornar ou que não seja um a fila válida
+        return NULL;                                        //Caso a fila esteja vazia não há o que retornar ou que não seja um a fila válida
     }
     else
     {
-        CLIENTE* cliente_retorno;                   //Um cliente auxiliar é criado para guardar quem será removido da fila
+        CLIENTE* cliente_retorno;                           //Um cliente auxiliar é criado para guardar quem será removido da fila
         cliente_retorno = fila_n->primeiro;
-        fila_n->primeiro = fila_n->primeiro->proximo;   //O primeiro da fila é trocado
-        fila_n->tamanho--;                            //O tamanho da fila é alterado para refletir o novo valor
+        fila_n->primeiro = fila_n->primeiro->proximo;       //O primeiro da fila é trocado
+        fila_n->tamanho--;                                  //O tamanho da fila é alterado para refletir o novo valor
         return cliente_retorno;
 
     }
@@ -83,11 +85,12 @@ CLIENTE* cria_cliente(double tempo_atendimento,double tempo_chegada)
 {
     CLIENTE* novo_cliente;
     novo_cliente = (CLIENTE*)malloc(sizeof(CLIENTE*));
-    if(novo_cliente != NULL)   //Verifica se foi possivel alocar memoria para o novo cliente
+    if(novo_cliente != NULL)                                        //Verifica se foi possivel alocar memoria para o novo cliente
     {
         novo_cliente->tempo_chegada = tempo_chegada;                //Utiliza o tempo de chegada como uma distribuição normal
         novo_cliente->tempo_atendimento = tempo_atendimento;        //Utiliza o tempo de atendimento como uma distribuição normal
         novo_cliente->proximo = NULL;
+        novo_cliente->tempo_no_caixa = 0;
         return novo_cliente;
     }
     else                                                            //Caso não foi possível alocar memoria libera a variavel e retorna NULL
@@ -101,13 +104,16 @@ CLIENTE* cria_cliente(double tempo_atendimento,double tempo_chegada)
 //cria vetores para filas e chama a função para a simulação
 int inicializacao(int N_caixa,int N_pessoas,int N_fila)
 {
+
     //Ponteiros para guardar as filas em vetores e criar o proximo cliente para entrar
     FILA** vetor_fila;
     int i;
 
+
+
     if(N_fila != 1 && N_caixa != N_fila) return false;
 
-    if(N_caixa == 0 || N_pessoas == 0 || N_fila == 0) return false;     //se algum parametro passado for igual a 0, não é necessario realizar o programa
+    if(N_caixa <= 0 || N_pessoas <= 0 || N_fila <= 0) return false;     //se algum parametro passado for igual a 0, não é necessario realizar o programa
     else
     {
         vetor_fila = malloc(N_fila*sizeof(FILA**));                     //Cria um vetor de fila
@@ -119,7 +125,7 @@ int inicializacao(int N_caixa,int N_pessoas,int N_fila)
         }
         else
         {
-            for(i = 0; i < N_fila; i++)
+            for(i = 0; i < N_fila; i++)                                 //Cria o N de filas indicado pela função
             {
                 vetor_fila[i] = cria_fila();
                 if(vetor_fila[i] == NULL) return false;
@@ -128,11 +134,14 @@ int inicializacao(int N_caixa,int N_pessoas,int N_fila)
 
     }
 
-    if(simulacao(vetor_fila,N_pessoas,N_caixa,N_fila))
+
+    if(simulacao(vetor_fila,N_pessoas,N_caixa,N_fila))                      //ao final da simulação informa se esta foi completa ou nao
     {
-        printf("Simulacao completa\n");
+  //      printf("Simulacao completa\n");
     }
-    else printf("Simulacao falhou\n");
+  //  else printf("Simulacao falhou\n");
+
+    destroi_fila(*vetor_fila);
 
     return true;
 }
@@ -148,198 +157,276 @@ int simulacao(FILA** vetor_fila,int N_pessoas, int N_caixa,int N_fila)
         tempo_fim_atendimento: tempo para o termino do atendimento do primeiro cliente da fila,
         N_na_fila: o numero de pessoas em todas as filas
     */
-    double tempo_maximo,tempo_medio,tempo_acumulado,tempo_atendido,tempo_fim_atendimento,N_na_fila;
+    double maior_tempo,tempo_medio,tempo_acumulado,tempo_atendido_total,N_na_fila;
     //numero de pessoas atendidas e a menor fila para inserir um novo cliente
-    int N_atendido, menor_fila,i,j;
-    CLIENTE* proximo_cliente,*p_auxiliar,*vetor_caixa[N_caixa];           //o proximo cliente a entrar na fila,auxiliar para busca
+
+    int N_atendido, menor_fila,i,j,k,boolean;
+    CLIENTE* proximo_cliente,*vetor_caixa[N_caixa],*aux;           //o proximo cliente a entrar na fila,auxiliar para busca
     proximo_cliente = NULL;
 
     //inicia as variaveis com valor nulo
-    tempo_maximo = 0;
+    maior_tempo = 0;
     tempo_acumulado = 0;
     tempo_medio = 0;
+    boolean = false;
+    double twobool = 0;
     N_na_fila = 0;
-    tempo_fim_atendimento = 0;
-    double tempo_decorrido = 0;
     N_atendido = 0;
+    constante = false;
     for(i = 0;i < N_caixa;i++)
     vetor_caixa[i] = NULL;
     i = j = 0;
 
 
     //começa a simulação
-    while(N_atendido < N_pessoas)                                   //Enquanto houver clientes para serem atendidos
+
+    while(N_atendido < N_pessoas)                                   //ate que o numero de atendimentos equipare o numero de clientes
     {
-        tempo_atendido = 0;
-
-        if(N_na_fila+N_atendido < N_pessoas)                        //Verifica se não há mais clientes para entrarem na fila
+        tempo_atendido_total = 0;
+        if(N_na_fila + N_atendido < N_pessoas)
         {
-            //Caso existam mais clientes para entrar na fila
-            //Cria um cliente com a distribuiçao normal
-            proximo_cliente = cria_cliente(Normal(tempo_chega_normal,tempo_chega_desvio),Normal(tempo_atende_normal,tempo_atende_desvio));
+            proximo_cliente = cria_cliente(2,1);                    //Cria um cliente com distribuição normal
             if(proximo_cliente == NULL) return false;               //A criação de um novo cliente falhou
-            N_na_fila++;
-
-
-            menor_fila = procura_menor_fila(vetor_fila,N_fila);     //Procura em qual fila o cliente entrará;
-            if(!enfileirar_cliente(vetor_fila[menor_fila],proximo_cliente)) return false;   //Enfilera o cliente, caso a ação não foi realizada interrompe o programa
-            if(vetor_fila[menor_fila]->tamanho == 1)                            //Quando ha somente uma pessoa na fila
+            N_na_fila++;                                            //incrementa a fila
+            menor_fila = procura_menor_fila(vetor_fila,N_fila);     //encontra a menor fila para o novo cliente entrar
+            if(!enfileirar_cliente(vetor_fila[menor_fila],proximo_cliente)) return false;   //enfileira o cliente na fila menor
+            if(N_fila == 1)                                         //se for uma fila unica
             {
-                tempo_atendido = proximo_cliente->tempo_atendimento;            //O tempo atendido é igual ao tempo de atendimento do cliente
-               //tempo_acumulado += tempo_atendido;                              //Aumenta o tempo aculmulado
-                if(tempo_maximo < tempo_atendido) tempo_maximo = tempo_atendido;//E troca o tempo maximo se for necessario
+
+                boolean = true;
+                for(i = 0; i < N_caixa; i++)                        //procura um caixa vazio
+                {
+                    if(vetor_caixa[i]!= NULL) vetor_caixa[i]->tempo_no_caixa += proximo_cliente->tempo_chegada; //incrementa o tempo de permanencia dos clientes no caixa
+                    else                                            //caso o tempo passou do tempo de atendimento
+                    {
+
+                        if(proximo_cliente != NULL)                 //e o proximo cliente é nao nulo
+                        {
+                            proximo_cliente = NULL;
+                            vetor_caixa[i] = desenfileirar_cliente(vetor_fila[0]);          //o primeiro da fila vai para um caixa vazio
+                        }
+                        continue;
+                    }
+                    if(vetor_caixa[i]->tempo_no_caixa >= vetor_caixa[i]->tempo_atendimento) //se o tempo de atendimento for menor que o de permanencia
+                    {
+                        if(vetor_fila[0]->primeiro != NULL && boolean)                      //o primeiro cliente é nao nulo e é a primeira vez que entra nesse if
+                        {
+                            vetor_fila[0]->primeiro->tempo_no_caixa = vetor_caixa[i]->tempo_no_caixa - vetor_caixa[i]->tempo_atendimento;  //o tempo no caixa da pessoa que acabou de entrar e calculado
+                            free(vetor_caixa[i]);
+                            vetor_caixa[i] = desenfileirar_cliente(vetor_fila[0]);          //remove o cliente da fila
+                            N_na_fila--;                                                    //um cliente sai da agencia
+                            N_atendido++;                                                   //aumenta o numero de clientes atendidos
+                            boolean = false;
+                        }
+                        else if(!boolean) vetor_caixa[i] = NULL;                            //se não for a primeira vez o caixa fica vazio
+                    }
+                }
+            }
+            else                                //no caso de varias filas
+            {
+                for(i = 0; i < N_caixa; i++)    //procura um caixa ocupado
+                {
+                    if(vetor_caixa[i]!= NULL)   //e nao nulo
+                    {
+                        vetor_caixa[i]->tempo_no_caixa += proximo_cliente->tempo_chegada;   //e incrementa seu tempo de permanencia
+                        if(vetor_caixa[i]->tempo_no_caixa >= vetor_caixa[i]->tempo_atendimento) //se a permanencia for maior que o tempo de atendimento
+                        {
+                            vetor_fila[i]->primeiro->tempo_no_caixa = vetor_caixa[i]->tempo_no_caixa - vetor_caixa[i]->tempo_atendimento;
+                            free(vetor_caixa[i]);
+                            vetor_caixa[i] = desenfileirar_cliente(vetor_fila[i]);      //o cliente sai do banco
+                            N_na_fila--;
+                            N_atendido++;
+                        }
+                    }
+                    else if(vetor_fila[i]->primeiro != NULL)                            //se a fila não esta vazia
+                    {
+                        vetor_caixa[i] = desenfileirar_cliente(vetor_fila[i]);          //coloca um cliente no proximo caixa
+                    }
+                }
             }
 
-            else                                                                //Se nao for o primeiro cliente
-            {
-                p_auxiliar = vetor_fila[menor_fila]->primeiro->proximo;         //Inicia uma varredura para calcular o tempo atendido do cliente
+            tempo_atendido_total = calcula_tempo(vetor_fila[menor_fila]);               //o tempo gasto por um cliente na fila
+            tempo_atendido_total += (vetor_caixa[menor_fila]->tempo_atendimento - vetor_caixa[menor_fila]->tempo_no_caixa); //e calculado nessas duas linhas
 
-                while(p_auxiliar != NULL)                                       //Até que chegue no fim da fila
+            tempo_acumulado += tempo_atendido_total;                                    //reune os tempos para fazer a media ao final
+
+            if(maior_tempo < tempo_atendido_total) maior_tempo = tempo_atendido_total;  //compara com o maior atual para a possivel troca
+
+        }
+
+        if(N_fila == 1)                                 //No caso de somente uma fila
+        {
+            if(N_na_fila + N_atendido >= N_pessoas)     //Se todos os clientes ja entraram na agencia
+            {
+                if(vetor_fila[0]->primeiro == NULL)     //e a fila esta vazia
                 {
-                    tempo_atendido += p_auxiliar->tempo_atendimento;            //O tempo atendido será a somatória dos tempos de atendimento
-                    tempo_decorrido += p_auxiliar->tempo_chegada;               //O tempo decorrido será a somatória dos tempos de chegada
-                    if(tempo_decorrido >= vetor_fila[menor_fila]->primeiro->tempo_atendimento)   //Caso o tempo decorrido for maior que o tempo de atendimento do primeiro, o primeiro sai do caixa
+                    for(i = 0; i < N_caixa;i++)         // procura por caixas ocupados
                     {
-                        desenfileirar_cliente(vetor_fila[menor_fila]);          //Remove o primeiro cliente da fila
-                        N_na_fila--;                                            //Decrementa o tamanho da fila
-                        N_atendido++;                                           //Incrementa o numero de pessoas atendidas
-                        p_auxiliar = vetor_fila[menor_fila]->primeiro->proximo; //Reinicia a Busca
-                        tempo_atendido = 0;
+                        if(vetor_caixa[i] != NULL)
+                        {
+
+                           // free(vetor_caixa[i]);
+                            vetor_caixa[i] = NULL;      // e limpa eles
+                            N_na_fila--;
+                            N_atendido++;
+                        }
                     }
-                    p_auxiliar = p_auxiliar->proximo;
                 }
 
-                //Calcula o tempo que falta para o primeiro terminar o atendimento
-                tempo_fim_atendimento = calcula_tempo(vetor_fila[menor_fila],vetor_fila[menor_fila]->primeiro->tempo_atendimento,vetor_fila[menor_fila]->tamanho);
-                if(tempo_fim_atendimento < 0) return false;     //Informa que houve um problema na simulação
 
-                tempo_atendido += tempo_fim_atendimento;        //Para terminar o calculo do tempo perdido soma o valor tempo_fim_atendimento
-
-                if(tempo_atendido > tempo_maximo) tempo_maximo = tempo_atendido;    //Verifica se o cliente atual levou o maior tempo
-
-                tempo_acumulado += tempo_atendido;              //Adiciona o tempo do cliente ao tempo acumulado para calcular a media
-            }
-        }
-        else
-        {
-            while(N_na_fila > 0)
-            {
-                for(i = 0; i < N_fila; i++)
+                aux = vetor_fila[0]->primeiro;          //Inicia o auxiliar de busca no primeiro elemento da fila
+                k = 0;
+                while(k < N_caixa)                      //busca por um caixa nao nulo
                 {
-                    if(vetor_fila[i]->tamanho == 0) continue;
-                    if(vetor_fila[i]->tamanho == 1)                                     //Quando ha somente uma pessoa na fila
+                    if(vetor_caixa[k]!= NULL) break;    //Se encontrar sai do loop
+                    k++;
+                }
+
+                //coloca um valor inicial em twobool para procurar pelo caixa mais proximo de liberar
+                if(k < N_caixa)twobool = vetor_caixa[k]->tempo_atendimento - vetor_caixa[k]->tempo_no_caixa;
+                else if(N_atendido >= N_pessoas) break; //se todos os caixas estao livres sai do loop principal
+
+                for(k = 0; k < N_caixa; k++)            //procura pelo caixa nao nulo com menor tempo para o cliente sair
+                {
+                    if(vetor_caixa[k] != NULL)
                     {
-                        tempo_atendido = proximo_cliente->tempo_atendimento;            //O tempo atendido é igual ao tempo de atendimento do cliente
-                        tempo_acumulado += tempo_atendido;                              //Aumenta o tempo aculmulado
-                        if(tempo_maximo < tempo_atendido) tempo_maximo = tempo_atendido;//E troca o tempo maximo se for necessario
-                        desenfileirar_cliente(vetor_fila[i]);
+                        if(vetor_caixa[k]->tempo_atendimento - vetor_caixa[k]->tempo_no_caixa < twobool)
+                        {
+                            twobool = vetor_caixa[k]->tempo_atendimento - vetor_caixa[k]->tempo_no_caixa;
+                            j = k;                      //guarda a posição do elemento
+                        }
+                    }
+                }
+
+
+                for(i = 0; i < vetor_fila[0]->tamanho; i++) //Percorre a fila para contabilizar os tempos dos clientes na fila
+                {
+                    vetor_caixa[j]->tempo_no_caixa += aux->tempo_chegada;
+                    if(vetor_caixa[j]->tempo_atendimento <= vetor_caixa[j]->tempo_no_caixa)   //se o tempo no caixa for maior que o tempo de atendimento, o cliente sai do caixa
+                    {
+                        //o resto do tempo que passou do atendimento e' passado adiante
+                        vetor_fila[0]->primeiro->tempo_no_caixa = vetor_caixa[j]->tempo_no_caixa - vetor_caixa[j]->tempo_atendimento;
+                        free(vetor_caixa[j]);
+                        vetor_caixa[j] = desenfileirar_cliente(vetor_fila[0]);  //remove o cliente da fila e o coloca no caixa
                         N_na_fila--;
                         N_atendido++;
                     }
+                    aux = aux->proximo;
+                }
+            }
 
-                    else                                                                //Se nao for o primeiro cliente
+        }
+
+        else                                                    //caso a quantidade de filas for maior que um
+        {
+            if(N_na_fila + N_atendido >= N_pessoas)             //e não há mais clientes para entrar no banco
+            {
+                for(i = 0; i < N_fila;i++)
+                {
+                    if(vetor_fila[i]->primeiro == NULL)         //procura por filas vazias com caixas ocupados
                     {
-                        p_auxiliar = vetor_fila[i]->primeiro->proximo;                  //Inicia uma varredura para calcular o tempo atendido do cliente
-
-                        while(p_auxiliar != NULL)                                       //Até que chegue no fim da fila
+                        if(vetor_caixa[i] != NULL)
                         {
-                            tempo_atendido += p_auxiliar->tempo_atendimento;            //O tempo atendido será a somatória dos tempos de atendimento
-                            tempo_decorrido += p_auxiliar->tempo_chegada;               //O tempo decorrido será a somatória dos tempos de chegada
-                            if(N_fila == 1)
-                            {
-                                for(j = 0; j < N_caixa;j++)
-                                {
-                                    if(caixa(j,vetor_fila[i]->primeiro->proximo,tempo_decorrido,vetor_caixa))
-                                    {
-                                        desenfileirar_cliente(vetor_fila[i]);                   //Remove o primeiro cliente da fila
-                                        N_na_fila--;                                            //Decrementa o tamanho da fila
-                                        N_atendido++;                                           //Incrementa o numero de pessoas atendidas
-                                        p_auxiliar = vetor_fila[i]->primeiro->proximo;          //Reinicia a Busca
-                                        tempo_atendido = 0;
-                                    }
-                                }
-                                if(p_auxiliar == NULL) break;
-                            }
-                            else
-                            {
-                                for(j = 0; j < N_caixa;j++)
-                                {
-
-                                }
-                            }
-                            p_auxiliar = p_auxiliar->proximo;
+                            free(vetor_caixa[i]);
+                            vetor_caixa[i] = NULL;              //entao remove o caixa ocupado
+                            N_na_fila--;
+                            N_atendido++;
                         }
 
-                        //Calcula o tempo que falta para o primeiro terminar o atendimento
-                        tempo_fim_atendimento = calcula_tempo(vetor_fila[i],vetor_fila[i]->primeiro->tempo_atendimento,vetor_fila[i]->tamanho);
-                        if(tempo_fim_atendimento < 0) return false;     //Informa que houve um problema na simulação
+                    }
 
-                        tempo_atendido += tempo_fim_atendimento;        //Para terminar o calculo do tempo perdido soma o valor tempo_fim_atendimento
+                    aux = vetor_fila[i]->primeiro;
 
-                        if(tempo_atendido > tempo_maximo) tempo_maximo = tempo_atendido;    //Verifica se o cliente atual levou o maior tempo
-
-                        tempo_acumulado += tempo_atendido;
+                    for(j = 0; j < vetor_fila[i]->tamanho; j++) //Percorre a fila para contabilizar os tempos dos clientes na fila
+                    {
+                        vetor_caixa[i]->tempo_no_caixa += aux->tempo_chegada;
+                        if(vetor_caixa[i]->tempo_atendimento <= vetor_caixa[i]->tempo_no_caixa)   //se o tempo no caixa for maior que o tempo de atendimento, o cliente sai do caixa
+                        {
+                            //o resto do tempo que passou do atendimento e' passado adiante
+                            vetor_fila[i]->primeiro->tempo_no_caixa = vetor_caixa[i]->tempo_no_caixa - vetor_caixa[i]->tempo_atendimento;
+                            free(vetor_caixa[i]);
+                            vetor_caixa[i] = desenfileirar_cliente(vetor_fila[i]);  //remove o cliente da fila e o coloca no caixa
+                            N_na_fila--;
+                            N_atendido++;
+                        }
+                        aux = aux->proximo;
                     }
                 }
-
-
             }
         }
+
     }
+
+
+
     tempo_medio = tempo_acumulado/N_pessoas;
 
-    printf("\n------  Tempo medio = %f | Tempo maximo = %f  ------\n",tempo_medio,tempo_maximo);
-
+    printf("                                                                                 \n");
+    printf("\n------  Tempo medio = %f | Tempo maximo = %f  ------\n",tempo_medio,maior_tempo);
     return true;
 }
 
-//Funcao que calcula quanto deverá ser subtraido do tempo de atendimento do cliente no caixa(quanto tempo ja passou desde o inicio do atendimento)
-double calcula_tempo(FILA* fila_n, double tempo_atendimento,double tamanho_fila)
+//Calcula quanto tempo os clientes na fila levaram sendo atendidos
+double calcula_tempo(FILA* afila)
 {
-    double valor;                                   //Valor que ira retornar
-    int i,j;
-    CLIENTE* auxiliar,*o_auxiliar;                   //Auxiliar para buscar pelo cliente
+    CLIENTE* aux;
+    double valor = 0;                       //inicia com zero
 
-    auxiliar = fila_n->primeiro->proximo;
-    valor = 0;                      //Este valor será o tempo que o primeiro cliente já foi atendido
-
-    while(auxiliar != NULL )
+    aux = afila->primeiro;
+    while(aux != NULL)
     {
-        valor = valor + auxiliar->tempo_chegada;
-        auxiliar = auxiliar->proximo;
+        valor += aux->tempo_atendimento;    //e incrementa a cada nova pessoa que passa pela fila
+        aux = aux->proximo;
     }
-    valor = tempo_atendimento - valor;
+
+
+    aux = NULL;
 
     return  valor;
 }
 
+
+//encontra a menor fila para o cliente entrar
 int procura_menor_fila(FILA** vetor_fila,int N_fila)
 {
     int i;
     int menor_fila = 0;
-    int menor_tamanho = vetor_fila[0]->tamanho;
+    int menor_tamanho = vetor_fila[0]->tamanho;         //compara o primeiro tamanho com outros
     for(i = 1; i < N_fila; i++)
     {
         if(vetor_fila[i]->tamanho < menor_tamanho)
         {
-            menor_tamanho = vetor_fila[i]->tamanho;
+            menor_tamanho = vetor_fila[i]->tamanho;     //guarda o menor tamanho
             menor_fila = i;
         }
     }
     return menor_fila;
 }
 
-int caixa(int qual_caixa,CLIENTE* client,double tempo_decorrido,CLIENTE* vetor_caixa[])
+//libera espaço de memória
+int destroi_fila(FILA* fi)
 {
-    if(vetor_caixa[qual_caixa] == NULL)
+    CLIENTE*aux2;
+    CLIENTE* aux = fi->primeiro;
+    int boolean = true;
+    if(fi == NULL) boolean = false;
+    for(int i = 0; i < fi->tamanho; i++)                //libera todos os clientes da fila antes de liberar a fila
     {
-        vetor_caixa[qual_caixa] = client;
-        return true;
+        aux2 = aux->proximo;
+        if(!destroi_cliente(aux)) boolean =  false;
+        aux = aux2;
     }
-    else if(vetor_caixa[qual_caixa]->tempo_atendimento <= tempo_decorrido)
-    {
-        vetor_caixa[qual_caixa] = client;
-        return true;
-    }
-    else return false;
+
+    free(fi);                                           //libera a fila
+    fi = NULL;
+    return boolean;
+}
+
+//libera a memoria reservada para os clientes
+int destroi_cliente(CLIENTE* mor)
+{
+    if(mor == NULL) return false;
+    free(mor);
+    mor = NULL;
+    return true;
 }
